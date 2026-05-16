@@ -1,0 +1,27 @@
+# 环境
+.env
+venv/
+.venv/
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 项目缓存
+.codedoc_cache/
+
+# 构建产物
+site/
+build/
+dist/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# 测试输出
+*.json
+!package.json
