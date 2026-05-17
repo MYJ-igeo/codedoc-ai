@@ -25,3 +25,6 @@ dist/
 # 测试输出
 *.json
 !package.json
+test_*.py
+test_diag.py # 保险起见
+notes.md
