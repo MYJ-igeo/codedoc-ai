@@ -132,5 +132,67 @@ def explain(file_path: Path, function: str, model: str):
         f"cost=${usage['cost_usd']:.6f}, model={usage['model']}[/]"
     )
 
+
+# ============================================================
+# Day 3: analyze 命令 - 扫描整个项目 + AI 解释 + 输出 JSON
+# ============================================================
+
+import json as json_lib
+from codedoc.explainer import explain_file
+
+
+@cli.command()
+@click.argument('path', type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option('--output', '-o', default='codedoc_output.json',
+              help='输出 JSON 文件路径')
+@click.option('--limit', '-n', default=0, type=int,
+              help='限制处理的文件数(0=全部),用于快速测试')
+@click.option('--model', default='claude-haiku-4-5-20251001',
+              help='模型 string(默认 Haiku 4.5),analyze 内部已通过 explainer 默认值传递')
+def analyze(path: Path, output: str, limit: int, model: str):
+    """[Day 3] 扫描 + AI 解释整个项目,输出中间结果 JSON。
+
+    示例:
+        codedoc analyze ./examples/sample_project
+        codedoc analyze ./my_project -o result.json
+        codedoc analyze ./my_project -n 2          # 只处理前 2 个文件
+    """
+    console.print(f"[bold cyan]扫描:[/] {path}")
+    files = scan_directory(path)
+    console.print(f"[bold]发现 {len(files)} 个有效 Python 文件[/]\n")
+
+    if not files:
+        console.print("[yellow]没有可处理的文件,退出。[/]")
+        return
+
+    if limit > 0:
+        files = files[:limit]
+        console.print(f"[yellow]限制处理前 {limit} 个文件[/]\n")
+
+    total_in, total_out, total_cost, total_failed = 0, 0, 0.0, 0
+
+    for i, file_info in enumerate(files, 1):
+        console.print(f"\n[bold yellow]({i}/{len(files)})[/] {file_info['file_path']}")
+
+        explain_file(
+            file_info,
+            on_progress=lambda msg: console.print(f"  [dim]→ {msg}[/]"),
+        )
+
+        usage = file_info['_token_usage']
+        total_in += usage['input']
+        total_out += usage['output']
+        total_cost += usage['cost']
+        total_failed += usage['failed']
+
+    # 保存 JSON
+    with open(output, 'w', encoding='utf-8') as f:
+        json_lib.dump(files, f, ensure_ascii=False, indent=2)
+
+    console.print(f"\n[bold green]✅ 完成[/]")
+    console.print(f"Token 用量: input={total_in:,}, output={total_out:,}")
+    console.print(f"失败调用: {total_failed} 次")
+    console.print(f"实际成本: [bold]${total_cost:.4f}[/]")
+    console.print(f"中间结果: [bold cyan]{output}[/]")
 if __name__ == '__main__':
     cli()
